@@ -331,3 +331,148 @@ var _ = Describe("Identity", func() {
 		})
 	})
 })
+
+var _ = Describe("IdentityTokenEncapsulator", func() {
+	Context("XRHID implementation", func() {
+		It("should return the organization ID from the identity", func() {
+			xrhid := identity.XRHID{
+				Identity: identity.Identity{
+					OrgID: "test-org-123",
+				},
+			}
+
+			orgID := xrhid.GetOrganizationID()
+			Expect(orgID).To(Equal("test-org-123"))
+		})
+
+		It("should return empty string when org ID is not set", func() {
+			xrhid := identity.XRHID{
+				Identity: identity.Identity{},
+			}
+
+			orgID := xrhid.GetOrganizationID()
+			Expect(orgID).To(Equal(""))
+		})
+	})
+
+	Context("OAuthEncapsulator implementation", func() {
+		It("should return hardcoded organization ID", func() {
+			oauth := identity.OAuthEncapsulator{
+				Token: "test-token",
+			}
+
+			orgID := oauth.GetOrganizationID()
+			// It always returns 1 because the org ID is not available in the OAuth token.
+			// The Org ID is used in the database to identify the organization.
+			Expect(orgID).To(Equal("1"))
+		})
+
+		It("should return the token", func() {
+			testToken := "test-oauth-token-123"
+			oauth := identity.OAuthEncapsulator{
+				Token: testToken,
+			}
+
+			token := oauth.GetToken()
+			Expect(token).To(Equal(testToken))
+		})
+	})
+
+	Context("NewXRHIDEncapsulator constructor", func() {
+		It("should create a valid XRHID encapsulator from valid JSON", func() {
+			validJSON := `{
+				"identity": {
+					"org_id": "test-org-456",
+					"type": "User",
+					"account_number": "123456"
+				}
+			}`
+
+			encapsulator, err := identity.NewXRHIDEncapsulator([]byte(validJSON))
+
+			Expect(err).To(BeNil())
+			Expect(encapsulator).ToNot(BeNil())
+			Expect(encapsulator.GetOrganizationID()).To(Equal("test-org-456"))
+		})
+
+		It("should return error for empty input", func() {
+			encapsulator, err := identity.NewXRHIDEncapsulator([]byte{})
+
+			Expect(err).To(Equal(identity.ErrMissingIdentity))
+			Expect(encapsulator).To(BeNil())
+		})
+
+		It("should return error for nil input", func() {
+			encapsulator, err := identity.NewXRHIDEncapsulator(nil)
+
+			Expect(err).To(Equal(identity.ErrMissingIdentity))
+			Expect(encapsulator).To(BeNil())
+		})
+
+		It("should return error for invalid JSON", func() {
+			invalidJSON := `{"invalid": json}`
+
+			encapsulator, err := identity.NewXRHIDEncapsulator([]byte(invalidJSON))
+
+			Expect(err).ToNot(BeNil())
+			Expect(encapsulator).To(BeNil())
+			Expect(err.Error()).To(ContainSubstring(identity.ErrDecodeIdentity.Error()))
+		})
+
+	})
+
+	Context("NewOAuthEncapsulator constructor", func() {
+		It("should create a valid OAuth encapsulator from valid JSON", func() {
+			validJSON := `{"Token": "oauth-token-xyz"}`
+
+			encapsulator, err := identity.NewOAuthEncapsulator([]byte(validJSON))
+
+			Expect(err).To(BeNil())
+			Expect(encapsulator).ToNot(BeNil())
+			Expect(encapsulator.GetOrganizationID()).To(Equal("1"))
+		})
+
+		It("should return error for invalid JSON", func() {
+			invalidJSON := `{"invalid": json}`
+
+			encapsulator, err := identity.NewOAuthEncapsulator([]byte(invalidJSON))
+
+			Expect(err).ToNot(BeNil())
+			Expect(encapsulator).To(BeNil())
+		})
+
+		It("should create encapsulator with empty token from empty JSON", func() {
+			emptyJSON := `{}`
+
+			encapsulator, err := identity.NewOAuthEncapsulator([]byte(emptyJSON))
+
+			Expect(err).To(BeNil())
+			Expect(encapsulator).ToNot(BeNil())
+			Expect(encapsulator.GetOrganizationID()).To(Equal("1"))
+		})
+	})
+
+	Context("Interface compatibility", func() {
+		It("should verify XRHID implements IdentityTokenEncapsulator", func() {
+			var encapsulator identity.IdentityTokenEncapsulator
+			xrhid := &identity.XRHID{
+				Identity: identity.Identity{
+					OrgID: "interface-test-org",
+				},
+			}
+
+			encapsulator = xrhid
+			Expect(encapsulator.GetOrganizationID()).To(Equal("interface-test-org"))
+		})
+
+		It("should verify OAuthEncapsulator implements IdentityTokenEncapsulator", func() {
+			var encapsulator identity.IdentityTokenEncapsulator
+			oauth := identity.OAuthEncapsulator{
+				Token: "interface-test-token",
+			}
+
+			encapsulator = oauth
+			Expect(encapsulator.GetOrganizationID()).To(Equal("1"))
+		})
+	})
+})
