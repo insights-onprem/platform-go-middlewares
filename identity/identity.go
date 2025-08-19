@@ -46,7 +46,7 @@ const (
 )
 
 var (
-	_ OrganizationIDProvider = &OAuth{}
+	_ OrganizationIDProvider = OAuth("")
 	_ OrganizationIDProvider = &XRHID{}
 )
 
@@ -129,16 +129,10 @@ type XRHID struct {
 	Entitlements map[string]ServiceDetails `json:"entitlements"`
 }
 
-type OAuth struct {
-	Token string
-}
+type OAuth string
 
 func (o OAuth) GetOrganizationID() string {
 	return "1"
-}
-
-func (o OAuth) GetToken() string {
-	return o.Token
 }
 
 type OrganizationIDProvider interface {
@@ -161,11 +155,7 @@ func NewXRHIDFromHeader(decodedIdentity []byte) (XRHID, error) {
 }
 
 func NewOAuthFromHeader(decodedIdentity []byte) (OAuth, error) {
-	id := OAuth{}
-	if err := json.Unmarshal(decodedIdentity, &id); err != nil {
-		return id, err
-	}
-	return id, nil
+	return OAuth(decodedIdentity), nil
 }
 
 const (

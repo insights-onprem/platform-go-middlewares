@@ -357,9 +357,7 @@ var _ = Describe("IdentityTokenEncapsulator", func() {
 
 	Context("OAuthEncapsulator implementation", func() {
 		It("should return hardcoded organization ID", func() {
-			oauth := identity.OAuth{
-				Token: "test-token",
-			}
+			oauth := identity.OAuth("test-token")
 
 			orgID := oauth.GetOrganizationID()
 			// It always returns 1 because the org ID is not available in the OAuth token.
@@ -369,12 +367,9 @@ var _ = Describe("IdentityTokenEncapsulator", func() {
 
 		It("should return the token", func() {
 			testToken := "test-oauth-token-123"
-			oauth := identity.OAuth{
-				Token: testToken,
-			}
+			oauth := identity.OAuth(testToken)
 
-			token := oauth.GetToken()
-			Expect(token).To(Equal(testToken))
+			Expect(string(oauth)).To(Equal(testToken))
 		})
 	})
 
@@ -432,19 +427,10 @@ var _ = Describe("IdentityTokenEncapsulator", func() {
 			Expect(encapsulator.GetOrganizationID()).To(Equal("1"))
 		})
 
-		It("should return error for invalid JSON", func() {
-			invalidJSON := `{"invalid": json}`
-
-			encapsulator, err := identity.NewOAuthFromHeader([]byte(invalidJSON))
-
-			Expect(err).ToNot(BeNil())
-			Expect(encapsulator).To(BeEquivalentTo(identity.OAuth{}))
-		})
-
 		It("should create encapsulator with empty token from empty JSON", func() {
-			emptyJSON := `{}`
+			emptyToken := ``
 
-			encapsulator, err := identity.NewOAuthFromHeader([]byte(emptyJSON))
+			encapsulator, err := identity.NewOAuthFromHeader([]byte(emptyToken))
 
 			Expect(err).To(BeNil())
 			Expect(encapsulator).ToNot(BeNil())
@@ -467,9 +453,7 @@ var _ = Describe("IdentityTokenEncapsulator", func() {
 
 		It("should verify OAuthEncapsulator implements IdentityTokenEncapsulator", func() {
 			var encapsulator identity.OrganizationIDProvider
-			oauth := identity.OAuth{
-				Token: "interface-test-token",
-			}
+			oauth := identity.OAuth("interface-test-token")
 
 			encapsulator = oauth
 			Expect(encapsulator.GetOrganizationID()).To(Equal("1"))
