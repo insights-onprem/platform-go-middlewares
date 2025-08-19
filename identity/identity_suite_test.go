@@ -357,7 +357,7 @@ var _ = Describe("IdentityTokenEncapsulator", func() {
 
 	Context("OAuthEncapsulator implementation", func() {
 		It("should return hardcoded organization ID", func() {
-			oauth := identity.OAuthEncapsulator{
+			oauth := identity.OAuth{
 				Token: "test-token",
 			}
 
@@ -369,7 +369,7 @@ var _ = Describe("IdentityTokenEncapsulator", func() {
 
 		It("should return the token", func() {
 			testToken := "test-oauth-token-123"
-			oauth := identity.OAuthEncapsulator{
+			oauth := identity.OAuth{
 				Token: testToken,
 			}
 
@@ -388,7 +388,7 @@ var _ = Describe("IdentityTokenEncapsulator", func() {
 				}
 			}`
 
-			encapsulator, err := identity.NewXRHIDEncapsulator([]byte(validJSON))
+			encapsulator, err := identity.NewXRHIDFromHeader([]byte(validJSON))
 
 			Expect(err).To(BeNil())
 			Expect(encapsulator).ToNot(BeNil())
@@ -396,26 +396,26 @@ var _ = Describe("IdentityTokenEncapsulator", func() {
 		})
 
 		It("should return error for empty input", func() {
-			encapsulator, err := identity.NewXRHIDEncapsulator([]byte{})
+			encapsulator, err := identity.NewXRHIDFromHeader([]byte{})
 
 			Expect(err).To(Equal(identity.ErrMissingIdentity))
-			Expect(encapsulator).To(BeNil())
+			Expect(encapsulator).To(BeEquivalentTo(identity.XRHID{}))
 		})
 
 		It("should return error for nil input", func() {
-			encapsulator, err := identity.NewXRHIDEncapsulator(nil)
+			encapsulator, err := identity.NewXRHIDFromHeader(nil)
 
 			Expect(err).To(Equal(identity.ErrMissingIdentity))
-			Expect(encapsulator).To(BeNil())
+			Expect(encapsulator).To(BeEquivalentTo(identity.XRHID{}))
 		})
 
 		It("should return error for invalid JSON", func() {
 			invalidJSON := `{"invalid": json}`
 
-			encapsulator, err := identity.NewXRHIDEncapsulator([]byte(invalidJSON))
+			encapsulator, err := identity.NewXRHIDFromHeader([]byte(invalidJSON))
 
 			Expect(err).ToNot(BeNil())
-			Expect(encapsulator).To(BeNil())
+			Expect(encapsulator).To(BeEquivalentTo(identity.XRHID{}))
 			Expect(err.Error()).To(ContainSubstring(identity.ErrDecodeIdentity.Error()))
 		})
 
@@ -425,7 +425,7 @@ var _ = Describe("IdentityTokenEncapsulator", func() {
 		It("should create a valid OAuth encapsulator from valid JSON", func() {
 			validJSON := `{"Token": "oauth-token-xyz"}`
 
-			encapsulator, err := identity.NewOAuthEncapsulator([]byte(validJSON))
+			encapsulator, err := identity.NewOAuthFromHeader([]byte(validJSON))
 
 			Expect(err).To(BeNil())
 			Expect(encapsulator).ToNot(BeNil())
@@ -435,16 +435,16 @@ var _ = Describe("IdentityTokenEncapsulator", func() {
 		It("should return error for invalid JSON", func() {
 			invalidJSON := `{"invalid": json}`
 
-			encapsulator, err := identity.NewOAuthEncapsulator([]byte(invalidJSON))
+			encapsulator, err := identity.NewOAuthFromHeader([]byte(invalidJSON))
 
 			Expect(err).ToNot(BeNil())
-			Expect(encapsulator).To(BeNil())
+			Expect(encapsulator).To(BeEquivalentTo(identity.OAuth{}))
 		})
 
 		It("should create encapsulator with empty token from empty JSON", func() {
 			emptyJSON := `{}`
 
-			encapsulator, err := identity.NewOAuthEncapsulator([]byte(emptyJSON))
+			encapsulator, err := identity.NewOAuthFromHeader([]byte(emptyJSON))
 
 			Expect(err).To(BeNil())
 			Expect(encapsulator).ToNot(BeNil())
@@ -454,7 +454,7 @@ var _ = Describe("IdentityTokenEncapsulator", func() {
 
 	Context("Interface compatibility", func() {
 		It("should verify XRHID implements IdentityTokenEncapsulator", func() {
-			var encapsulator identity.IdentityTokenEncapsulator
+			var encapsulator identity.OrganizationIDProvider
 			xrhid := &identity.XRHID{
 				Identity: identity.Identity{
 					OrgID: "interface-test-org",
@@ -466,8 +466,8 @@ var _ = Describe("IdentityTokenEncapsulator", func() {
 		})
 
 		It("should verify OAuthEncapsulator implements IdentityTokenEncapsulator", func() {
-			var encapsulator identity.IdentityTokenEncapsulator
-			oauth := identity.OAuthEncapsulator{
+			var encapsulator identity.OrganizationIDProvider
+			oauth := identity.OAuth{
 				Token: "interface-test-token",
 			}
 

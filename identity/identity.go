@@ -45,6 +45,11 @@ const (
 	RHIdentityHeader = "X-Rh-Identity"
 )
 
+var (
+	_ OrganizationIDProvider = &OAuth{}
+	_ OrganizationIDProvider = &XRHID{}
+)
+
 // context key type and values
 type identityKey int
 
@@ -124,19 +129,19 @@ type XRHID struct {
 	Entitlements map[string]ServiceDetails `json:"entitlements"`
 }
 
-type OAuthEncapsulator struct {
+type OAuth struct {
 	Token string
 }
 
-func (o OAuthEncapsulator) GetOrganizationID() string {
+func (o OAuth) GetOrganizationID() string {
 	return "1"
 }
 
-func (o OAuthEncapsulator) GetToken() string {
+func (o OAuth) GetToken() string {
 	return o.Token
 }
 
-type IdentityTokenEncapsulator interface {
+type OrganizationIDProvider interface {
 	GetOrganizationID() string
 }
 
@@ -144,21 +149,21 @@ func (x XRHID) GetOrganizationID() string {
 	return x.Identity.OrgID
 }
 
-func NewXRHIDEncapsulator(decodedIdentity []byte) (IdentityTokenEncapsulator, error) {
-	if len(decodedIdentity) == 0 {
-		return nil, ErrMissingIdentity
-	}
+func NewXRHIDFromHeader(decodedIdentity []byte) (XRHID, error) {
 	id := XRHID{}
-	if err := json.Unmarshal(decodedIdentity, &id); err != nil {
-		return nil, fmt.Errorf("%s:%s", ErrDecodeIdentity, err)
+	if len(decodedIdentity) == 0 {
+		return id, ErrMissingIdentity
 	}
-	return &id, nil
+	if err := json.Unmarshal(decodedIdentity, &id); err != nil {
+		return id, fmt.Errorf("%s:%s", ErrDecodeIdentity, err)
+	}
+	return id, nil
 }
 
-func NewOAuthEncapsulator(decodedIdentity []byte) (IdentityTokenEncapsulator, error) {
-	id := OAuthEncapsulator{}
+func NewOAuthFromHeader(decodedIdentity []byte) (OAuth, error) {
+	id := OAuth{}
 	if err := json.Unmarshal(decodedIdentity, &id); err != nil {
-		return nil, err
+		return id, err
 	}
 	return id, nil
 }
