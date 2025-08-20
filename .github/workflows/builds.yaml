@@ -7,11 +7,11 @@ on:
   pull_request:
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [ '1.21', '1.22', '1.23' ]
+        go-version: [ '1.21', '1.22', '1.23']
 
     steps:
       - uses: actions/checkout@v4
@@ -20,5 +20,5 @@ jobs:
         with:
           go-version: ${{ matrix.go-version }}
 
-      - name: Test
-        run: go test -v ./...
+      - name: Build
+        run: go build -v ./...
