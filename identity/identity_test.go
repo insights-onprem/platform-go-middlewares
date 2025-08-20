@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	"github.com/redhatinsights/platform-go-middlewares/v2/identity"
+	"github.com/insights-onprem/platform-go-middlewares/v2/identity"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
