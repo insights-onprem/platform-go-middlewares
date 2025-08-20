@@ -39,6 +39,17 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+
+	authv1 "k8s.io/api/authentication/v1"
+)
+
+const (
+	RHIdentityHeader = "X-Rh-Identity"
+)
+
+var (
+	_ OrganizationIDProvider = OAuthID{}
+	_ OrganizationIDProvider = XRHID{}
 )
 
 // context key type and values
@@ -120,6 +131,34 @@ type XRHID struct {
 	Entitlements map[string]ServiceDetails `json:"entitlements"`
 }
 
+type OAuthID authv1.UserInfo
+
+func (o OAuthID) GetOrganizationID() string {
+	return "1"
+}
+
+type OrganizationIDProvider interface {
+	GetOrganizationID() string
+}
+
+func (x XRHID) GetOrganizationID() string {
+	if x.Identity.OrgID == "" {
+		return x.Identity.Internal.OrgID
+	}
+	return x.Identity.OrgID
+}
+
+func NewXRHIDFromHeader(decodedIdentity []byte) (XRHID, error) {
+	id := XRHID{}
+	if len(decodedIdentity) == 0 {
+		return id, ErrMissingIdentity
+	}
+	if err := json.Unmarshal(decodedIdentity, &id); err != nil {
+		return id, fmt.Errorf("%s:%s", ErrDecodeIdentity, err)
+	}
+	return id, nil
+}
+
 const (
 	parsedKey identityKey = iota
 	rawKey    identityKey = iota
@@ -162,7 +201,7 @@ func GetIdentityHeader(ctx context.Context) string {
 // Deprecated in v2, use EnforceIdentityWithLogger.
 func EnforceIdentity(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx, err := DecodeIdentityCtx(r.Context(), r.Header.Get("X-Rh-Identity"))
+		ctx, err := DecodeIdentityCtx(r.Context(), r.Header.Get(RHIdentityHeader))
 		if err != nil {
 			http.Error(w, http.StatusText(400)+": "+err.Error(), 400)
 			return
@@ -314,7 +353,7 @@ func DecodeIdentityCtx(ctx context.Context, header string) (context.Context, err
 func EnforceIdentityWithLogger(logger ErrorFunc) func(next http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
-			id := r.Header.Get("X-Rh-Identity")
+			id := r.Header.Get(RHIdentityHeader)
 			ctx, err := DecodeIdentityCtx(r.Context(), id)
 			if err != nil {
 				msg := http.StatusText(400) + ": " + err.Error()
