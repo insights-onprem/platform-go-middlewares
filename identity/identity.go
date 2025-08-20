@@ -39,6 +39,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+
+	authv1 "k8s.io/api/authentication/v1"
 )
 
 const (
@@ -46,8 +48,8 @@ const (
 )
 
 var (
-	_ OrganizationIDProvider = OAuth("")
-	_ OrganizationIDProvider = &XRHID{}
+	_ OrganizationIDProvider = OAuthID{}
+	_ OrganizationIDProvider = XRHID{}
 )
 
 // context key type and values
@@ -129,9 +131,9 @@ type XRHID struct {
 	Entitlements map[string]ServiceDetails `json:"entitlements"`
 }
 
-type OAuth string
+type OAuthID authv1.UserInfo
 
-func (o OAuth) GetOrganizationID() string {
+func (o OAuthID) GetOrganizationID() string {
 	return "1"
 }
 
@@ -140,6 +142,9 @@ type OrganizationIDProvider interface {
 }
 
 func (x XRHID) GetOrganizationID() string {
+	if x.Identity.OrgID == "" {
+		return x.Identity.Internal.OrgID
+	}
 	return x.Identity.OrgID
 }
 
@@ -152,10 +157,6 @@ func NewXRHIDFromHeader(decodedIdentity []byte) (XRHID, error) {
 		return id, fmt.Errorf("%s:%s", ErrDecodeIdentity, err)
 	}
 	return id, nil
-}
-
-func NewOAuthFromHeader(decodedIdentity []byte) (OAuth, error) {
-	return OAuth(decodedIdentity), nil
 }
 
 const (
